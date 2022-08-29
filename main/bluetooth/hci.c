@@ -174,6 +174,7 @@ static void bt_hci_cmd_le_conn_update(struct hci_cp_le_conn_update *cp);
 static void bt_hci_cmd_le_encrypt(const uint8_t *key, uint8_t *plaintext);
 static void bt_hci_cmd_le_rand(void);
 static void bt_hci_cmd_le_start_encryption(uint16_t handle, uint64_t rand, uint16_t ediv, uint8_t *ltk);
+static void bt_hci_cmd_read_rssi(uint16_t handle);
 //static void bt_hci_cmd_le_set_ext_scan_param(void *cp);
 //static void bt_hci_cmd_le_set_ext_scan_enable(void *cp);
 static void bt_hci_le_meta_evt_hdlr(struct bt_hci_pkt *bt_hci_evt_pkt);
@@ -981,6 +982,15 @@ static void bt_hci_cmd_le_start_encryption(uint16_t handle, uint64_t rand, uint1
     bt_hci_cmd(BT_HCI_OP_LE_START_ENCRYPTION, sizeof(*le_start_encryption));
 }
 
+static void bt_hci_cmd_read_rssi(uint16_t handle) {
+    struct bt_hci_cp_read_rssi *read_rssi = (struct bt_hci_cp_read_rssi *)&bt_hci_pkt_tmp.cp;
+    printf("# %s\n", __FUNCTION__);
+
+    read_rssi->handle = handle;
+
+    bt_hci_cmd(BT_HCI_OP_READ_RSSI, sizeof(*read_rssi));
+}
+
 #if 0
 static void bt_hci_cmd_le_set_ext_scan_param(void *cp) {
     struct bt_hci_cp_le_set_ext_scan_param *le_set_ext_scan_param = (struct bt_hci_cp_le_set_ext_scan_param *)&bt_hci_pkt_tmp.cp;
@@ -1281,6 +1291,10 @@ void bt_hci_exit_sniff_mode(struct bt_dev *device) {
 void bt_hci_get_le_local_addr(bt_addr_le_t *le_local) {
     memcpy(le_local->a.val, local_bdaddr, sizeof(le_local->a.val));
     le_local->type = 0x00;
+}
+
+void bt_hci_read_rssi(struct bt_dev *device) {
+    bt_hci_cmd_read_rssi(device->acl_handle);
 }
 
 int32_t bt_hci_get_random(struct bt_dev *device, bt_hci_le_cb_t cb) {
@@ -1678,6 +1692,12 @@ void bt_hci_evt_hdlr(struct bt_hci_pkt *bt_hci_evt_pkt) {
                             bt_hci_pkt_retry = 0;
                             bt_hci_q_conf(1);
                         }
+                        break;
+                    }
+                    case BT_HCI_OP_READ_RSSI:
+                    {
+                        struct bt_hci_rp_read_rssi *read_rssi = (struct bt_hci_rp_read_rssi *)&bt_hci_evt_pkt->evt_data[sizeof(*cmd_complete)];
+                        printf("# RSSI: %i\n", read_rssi->rssi);
                         break;
                     }
                     case BT_HCI_OP_READ_BD_ADDR:

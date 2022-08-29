@@ -23,6 +23,18 @@
 #include "system/manager.h"
 #include "system/btn.h"
 #include "sdkconfig.h"
+#include "bluetooth/hci.h"
+
+static void poll_rssi_task(void *arg) {
+    while (1) {
+        struct bt_dev *device;
+        int res = bt_host_get_active_dev(&device);
+        if (res > -1) {
+            bt_hci_read_rssi(device);
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
 
 static void wired_init_task(void) {
 #ifdef CONFIG_BLUERETRO_SYSTEM_UNIVERSAL
@@ -98,6 +110,8 @@ static void wl_init_task(void *arg) {
 #else
     boot_btn_init();
 #endif
+
+    xTaskCreatePinnedToCore(poll_rssi_task, "poll_rssi_task", 2048, NULL, 5, NULL, 0);
 
     if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
         if (err) {
